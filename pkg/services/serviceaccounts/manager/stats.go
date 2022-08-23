@@ -50,6 +50,13 @@ func (sa *ServiceAccountsService) getUsageMetrics(ctx context.Context) (map[stri
 	stats["stats.serviceaccounts.count"] = sqlStats.ServiceAccounts
 	stats["stats.serviceaccounts.tokens.count"] = sqlStats.Tokens
 
+	var secretCheckEnabled int64 = 0
+	if sa.checkTokenLeaks {
+		secretCheckEnabled = 1
+	}
+
+	stats["stats.serviceaccounts.secret_check.enabled.count"] = secretCheckEnabled
+
 	MStatTotalServiceAccountTokens.Set(float64(sqlStats.Tokens))
 	MStatTotalServiceAccounts.Set(float64(sqlStats.ServiceAccounts))
 

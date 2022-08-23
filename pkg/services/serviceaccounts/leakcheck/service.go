@@ -57,10 +57,7 @@ func NewService(store SATokenRetriever, cfg *setting.Cfg) *Service {
 }
 
 func (s *Service) RetrieveActiveTokens(ctx context.Context) ([]apikey.APIKey, error) {
-	saTokens, err := s.store.ListTokens(ctx, &serviceaccounts.GetSATokensQuery{
-		OrgID:            nil,
-		ServiceAccountID: nil,
-	})
+	saTokens, err := s.store.ListTokens(ctx, &serviceaccounts.GetSATokensQuery{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve service account tokens: %w", err)
 	}
