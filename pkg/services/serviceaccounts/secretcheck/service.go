@@ -1,4 +1,4 @@
-package leakcheck
+package secretcheck
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/grafana/pkg/setting"
 )
 
-const defaultURL = "https://leakcheck.grafana.com"
+const defaultURL = "https://secretcheck.grafana.com"
 
 type Checker interface {
 	CheckTokens(ctx context.Context) error
@@ -30,7 +30,7 @@ type SATokenRetriever interface {
 	RevokeServiceAccountToken(ctx context.Context, orgID, serviceAccountID, tokenID int64) error
 }
 
-// Leak Check Service is grafana's service for checking leaked keys.
+// Secret Check Service is grafana's service for checking leaked keys.
 type Service struct {
 	store         SATokenRetriever
 	client        CheckerClient
@@ -41,16 +41,16 @@ type Service struct {
 }
 
 func NewService(store SATokenRetriever, cfg *setting.Cfg) *Service {
-	leakcheckBaseURL := cfg.SectionWithEnvOverrides("leakcheck").Key("base_url").MustString(defaultURL)
+	secretcheckBaseURL := cfg.SectionWithEnvOverrides("secretcheck").Key("base_url").MustString(defaultURL)
 	// URL to send outgoing webhook when a token is leaked.
-	oncallURL := cfg.SectionWithEnvOverrides("leakcheck").Key("oncall_url").MustString("")
-	revoke := cfg.SectionWithEnvOverrides("leakcheck").Key("revoke").MustBool(true)
+	oncallURL := cfg.SectionWithEnvOverrides("secretcheck").Key("oncall_url").MustString("")
+	revoke := cfg.SectionWithEnvOverrides("secretcheck").Key("revoke").MustBool(true)
 
 	return &Service{
 		store:         store,
-		client:        newClient(leakcheckBaseURL, cfg.BuildVersion),
+		client:        newClient(secretcheckBaseURL, cfg.BuildVersion),
 		webHookClient: newWebHookClient(oncallURL, cfg.BuildVersion),
-		logger:        log.New("leakcheck"),
+		logger:        log.New("secretcheck"),
 		webHookNotify: oncallURL != "",
 		revoke:        revoke,
 	}
@@ -93,35 +93,35 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 	}
 
 	// Check if any leaked tokens exist.
-	leakcheckTokens, err := s.client.CheckTokens(ctx, hashes)
+	secretcheckTokens, err := s.client.CheckTokens(ctx, hashes)
 	if err != nil {
 		return fmt.Errorf("failed to check tokens: %w", err)
 	}
 
 	// Revoke leaked tokens.
 	// Could be done in bulk but we don't expect more than 1 or 2 tokens to be leaked per check.
-	for _, leakcheckToken := range leakcheckTokens {
-		leakcheckToken := leakcheckToken
-		leakedToken := hashMap[leakcheckToken.Hash]
+	for _, secretcheckToken := range secretcheckTokens {
+		secretcheckToken := secretcheckToken
+		leakedToken := hashMap[secretcheckToken.Hash]
 
 		if s.revoke {
 			if err := s.store.RevokeServiceAccountToken(
 				ctx, leakedToken.OrgId, *leakedToken.ServiceAccountId, leakedToken.Id); err != nil {
 				s.logger.Error("failed to delete leaked token. Revoke manually.",
-					"error", err, "url", leakcheckToken.URL, "reported_at", leakcheckToken.ReportedAt,
+					"error", err, "url", secretcheckToken.URL, "reported_at", secretcheckToken.ReportedAt,
 					"token_id", leakedToken.Id, "token", leakedToken.Name, "org", leakedToken.OrgId,
 					"serviceAccount", *leakedToken.ServiceAccountId)
 			}
 		}
 
 		if s.webHookNotify {
-			if err := s.webHookClient.Notify(ctx, &leakcheckToken, leakedToken.Name, s.revoke); err != nil {
+			if err := s.webHookClient.Notify(ctx, &secretcheckToken, leakedToken.Name, s.revoke); err != nil {
 				s.logger.Warn("failed to call token leak webhook", "error", err)
 			}
 		}
 
 		s.logger.Warn("found leaked token",
-			"url", leakcheckToken.URL, "reported_at", leakcheckToken.ReportedAt,
+			"url", secretcheckToken.URL, "reported_at", secretcheckToken.ReportedAt,
 			"token_id", leakedToken.Id, "token", leakedToken.Name, "org", leakedToken.OrgId,
 			"serviceAccount", *leakedToken.ServiceAccountId, "revoked", s.revoke)
 	}

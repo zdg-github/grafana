@@ -1,4 +1,4 @@
-package leakcheck
+package secretcheck
 
 import (
 	"context"
@@ -32,32 +32,32 @@ func (m *MockTokenRetriever) RevokeServiceAccountToken(
 	return m.errRevoke
 }
 
-type MockLeakChecker struct{}
+type MockSecretChecker struct{}
 
-func (m *MockLeakChecker) CheckTokens(ctx context.Context) error {
+func (m *MockSecretChecker) CheckTokens(ctx context.Context) error {
 	return nil
 }
 
-type MockLeakCheckClient struct {
+type MockSecretCheckClient struct {
 	tokens []Token
 	err    error
 
 	checkCalls []interface{}
 }
 
-func (m *MockLeakCheckClient) CheckTokens(ctx context.Context, keyHashes []string) ([]Token, error) {
+func (m *MockSecretCheckClient) CheckTokens(ctx context.Context, keyHashes []string) ([]Token, error) {
 	m.checkCalls = append(m.checkCalls, keyHashes)
 
 	return m.tokens, m.err
 }
 
-type MockLeakCheckNotifier struct {
+type MockSecretCheckNotifier struct {
 	err error
 
 	notifyCalls [][]interface{}
 }
 
-func (m *MockLeakCheckNotifier) Notify(ctx context.Context,
+func (m *MockSecretCheckNotifier) Notify(ctx context.Context,
 	token *Token, tokenName string, revoked bool,
 ) error {
 	m.notifyCalls = append(m.notifyCalls, []interface{}{token, tokenName, revoked})

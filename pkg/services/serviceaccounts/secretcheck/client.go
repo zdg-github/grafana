@@ -1,4 +1,4 @@
-package leakcheck
+package secretcheck
 
 import (
 	"bytes"
@@ -13,16 +13,16 @@ import (
 
 const timeout = 4 * time.Second
 
-// LeakCheck Client is grafana's client for checking leaked keys.
+// SecretCheck Client is grafana's client for checking leaked keys.
 // Don't use this client directly,
-// use the leakcheck Service which handles token collection and checking instead.
+// use the secretcheck Service which handles token collection and checking instead.
 type client struct {
 	httpClient *http.Client
 	version    string
 	baseURL    string
 }
 
-type leakcheckRequest struct {
+type secretcheckRequest struct {
 	KeyHashes []string `json:"hashes"`
 }
 
@@ -52,7 +52,7 @@ func newClient(url, version string) *client {
 // Returns list of leaked tokens.
 func (c *client) CheckTokens(ctx context.Context, keyHashes []string) ([]Token, error) {
 	// create request body
-	values := leakcheckRequest{KeyHashes: keyHashes}
+	values := secretcheckRequest{KeyHashes: keyHashes}
 
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
@@ -61,7 +61,7 @@ func (c *client) CheckTokens(ctx context.Context, keyHashes []string) ([]Token, 
 
 	// Build URL
 	url := fmt.Sprintf("%s/tokens", c.baseURL)
-	// Create request for leakcheck server
+	// Create request for secretcheck server
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		url, bytes.NewReader(jsonValue))
 	if err != nil {
@@ -71,7 +71,7 @@ func (c *client) CheckTokens(ctx context.Context, keyHashes []string) ([]Token, 
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "grafana-leakcheck-client/"+c.version)
+	req.Header.Set("User-Agent", "grafana-secretcheck-client/"+c.version)
 
 	// make http POST request to check for leaked tokens.
 	resp, err := c.httpClient.Do(req)

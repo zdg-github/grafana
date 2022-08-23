@@ -51,7 +51,7 @@ func (sa *ServiceAccountsService) getUsageMetrics(ctx context.Context) (map[stri
 	stats["stats.serviceaccounts.tokens.count"] = sqlStats.Tokens
 
 	var secretCheckEnabled int64 = 0
-	if sa.checkTokenLeaks {
+	if sa.secretCheckEnabled {
 		secretCheckEnabled = 1
 	}
 

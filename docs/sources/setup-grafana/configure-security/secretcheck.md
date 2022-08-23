@@ -1,13 +1,13 @@
 ---
 aliases:
-  - /docs/grafana/latest/auth/leakcheck/
-  - /docs/grafana/latest/setup-grafana/configure-security/leakcheck/
-description: Grafana token leak checking
-title: Token Leak Check
+  - /docs/grafana/latest/auth/secretcheck/
+  - /docs/grafana/latest/setup-grafana/configure-security/secretcheck/
+description: Grafana token checking
+title: Token secret check
 weight: 1000
 ---
 
-# Token leak checking
+# Token secret checking
 
 Grafana allows you to check if your [API keys]({{< relref "../../administration/api-keys/" >}})
 and [Service accounts]({{< relref "../../administration/service-accounts/" >}}) are leaked in GitHub through
@@ -17,7 +17,7 @@ the [GitHub Secret Scanning](https://docs.github.com/en/code-security/secret-sca
 
 ## Token Revocation
 
-When a Grafana secret is detected by GitHub Secret Scanning, its hash is stored in Grafana's Leak Check service.
+When a Grafana secret is detected by GitHub Secret Scanning, its hash is stored in Grafana's secret check service.
 
 On-premises and cloud Grafana instances can query this service to check if a token emitted by the instance has been publicly exposed by
 hash-to-hash comparison.
@@ -46,17 +46,17 @@ Grafana has revoked this token",
 
 ## Configuration
 
-> **Note:** The leakcheck feature is disabled by default.
+> **Note:** The secretcheck feature is disabled by default.
 
 ```ini
-[leakcheck]
-# Enable leakcheck feature
+[secretcheck]
+# Enable secretcheck feature
 enabled = false
 
 # Interval to check for token leaks
 interval = 5m
 
-# base URL of the grafana token leak check service
+# base URL of the grafana token secret check service
 base_url = http://127.0.0.1:3333 # TODO: change this to the correct url
 
 # URL to send outgoing webhooks to in case of detection

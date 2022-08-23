@@ -1,4 +1,4 @@
-package leakcheck
+package secretcheck
 
 import (
 	"context"
@@ -132,14 +132,14 @@ func TestService_CheckTokens(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
 			tokenStore := &MockTokenRetriever{keys: tt.retrievedTokens}
-			client := &MockLeakCheckClient{tokens: tt.leakedTokens}
-			notifier := &MockLeakCheckNotifier{}
+			client := &MockSecretCheckClient{tokens: tt.leakedTokens}
+			notifier := &MockSecretCheckNotifier{}
 
 			service := &Service{
 				store:         tokenStore,
 				client:        client,
 				webHookClient: notifier,
-				logger:        log.New("leakcheck"),
+				logger:        log.New("secretcheck"),
 				webHookNotify: tt.notify,
 				revoke:        tt.revoke,
 			}

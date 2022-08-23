@@ -15,7 +15,7 @@ func Test_UsageStats(t *testing.T) {
 		ServiceAccounts: 1,
 		Tokens:          1,
 	}}
-	svc := ServiceAccountsService{store: storeMock, checkTokenLeaks: true}
+	svc := ServiceAccountsService{store: storeMock, secretCheckEnabled: true}
 	err := svc.DeleteServiceAccount(context.Background(), 1, 1)
 	require.NoError(t, err)
 	assert.Len(t, storeMock.Calls.DeleteServiceAccount, 1)

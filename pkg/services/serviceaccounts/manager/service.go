@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/serviceaccounts"
 	"github.com/grafana/grafana/pkg/services/serviceaccounts/api"
-	"github.com/grafana/grafana/pkg/services/serviceaccounts/leakcheck"
+	"github.com/grafana/grafana/pkg/services/serviceaccounts/secretcheck"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
@@ -21,13 +21,13 @@ const (
 )
 
 type ServiceAccountsService struct {
-	store            serviceaccounts.Store
-	log              log.Logger
-	backgroundLog    log.Logger
-	leakcheckService leakcheck.Checker
+	store              serviceaccounts.Store
+	log                log.Logger
+	backgroundLog      log.Logger
+	secretcheckService secretcheck.Checker
 
-	checkTokenLeaks    bool
-	checkTokenInterval time.Duration
+	secretCheckEnabled  bool
+	secretCheckInterval time.Duration
 }
 
 func ProvideServiceAccountsService(
@@ -53,12 +53,12 @@ func ProvideServiceAccountsService(
 	serviceaccountsAPI := api.NewServiceAccountsAPI(cfg, s, ac, routeRegister, s.store, permissionService)
 	serviceaccountsAPI.RegisterAPIEndpoints()
 
-	s.checkTokenLeaks = cfg.SectionWithEnvOverrides("leakcheck").Key("enabled").MustBool(false)
-	if s.checkTokenLeaks {
-		s.checkTokenInterval = cfg.SectionWithEnvOverrides("leakcheck").
+	s.secretCheckEnabled = cfg.SectionWithEnvOverrides("secretcheck").Key("enabled").MustBool(false)
+	if s.secretCheckEnabled {
+		s.secretCheckInterval = cfg.SectionWithEnvOverrides("secretcheck").
 			Key("interval").MustDuration(defaultTokenCollectionInterval)
 
-		s.leakcheckService = leakcheck.NewService(s.store, cfg)
+		s.secretcheckService = secretcheck.NewService(s.store, cfg)
 	}
 
 	return s, nil
@@ -75,20 +75,20 @@ func (sa *ServiceAccountsService) Run(ctx context.Context) error {
 	defer updateStatsTicker.Stop()
 
 	// Enforce a minimum interval of 1 minute.
-	if sa.checkTokenInterval < time.Minute {
-		sa.backgroundLog.Warn("token leak check interval is too low, increasing to " +
+	if sa.secretCheckInterval < time.Minute {
+		sa.backgroundLog.Warn("token secret check interval is too low, increasing to " +
 			defaultTokenCollectionInterval.String())
 
-		sa.checkTokenInterval = defaultTokenCollectionInterval
+		sa.secretCheckInterval = defaultTokenCollectionInterval
 	}
 
-	tokenCheckTicker := time.NewTicker(sa.checkTokenInterval)
+	tokenCheckTicker := time.NewTicker(sa.secretCheckInterval)
 
-	if !sa.checkTokenLeaks {
+	if !sa.secretCheckEnabled {
 		tokenCheckTicker.Stop()
 	} else {
-		sa.backgroundLog.Debug("enabled token leak check and executing first check")
-		if err := sa.leakcheckService.CheckTokens(ctx); err != nil {
+		sa.backgroundLog.Debug("enabled token secret check and executing first check")
+		if err := sa.secretcheckService.CheckTokens(ctx); err != nil {
 			sa.backgroundLog.Warn("Failed to check for leaked tokens", "error", err.Error())
 		}
 
@@ -114,7 +114,7 @@ func (sa *ServiceAccountsService) Run(ctx context.Context) error {
 		case <-tokenCheckTicker.C:
 			sa.backgroundLog.Debug("checking for leaked tokens")
 
-			if err := sa.leakcheckService.CheckTokens(ctx); err != nil {
+			if err := sa.secretcheckService.CheckTokens(ctx); err != nil {
 				sa.backgroundLog.Warn("Failed to check for leaked tokens", "error", err.Error())
 			}
 		}

@@ -1,4 +1,4 @@
-package leakcheck
+package secretcheck
 
 import (
 	"bytes"
@@ -44,7 +44,7 @@ func (wClient *webHookClient) Notify(ctx context.Context,
 	// create request body
 	values := map[string]interface{}{
 		"alert_uid":                uuid.NewString(),
-		"title":                    "LeakCheck Alert: Grafana Token leaked",
+		"title":                    "SecretCheck Alert: Grafana Token leaked",
 		"image_url":                "https://images.pexels.com/photos/5119737/pexels-photo-5119737.jpeg?auto=compress&cs=tinysrgb&w=300", //nolint
 		"state":                    "alerting",
 		"link_to_upstream_details": token.URL,
@@ -60,7 +60,7 @@ func (wClient *webHookClient) Notify(ctx context.Context,
 	}
 
 	// Build URL
-	// Create request for leakcheck server
+	// Create request for secretcheck server
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		wClient.url, bytes.NewReader(jsonValue))
 	if err != nil {
@@ -70,7 +70,7 @@ func (wClient *webHookClient) Notify(ctx context.Context,
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "grafana-leakcheck-webhook-client/"+wClient.version)
+	req.Header.Set("User-Agent", "grafana-secretcheck-webhook-client/"+wClient.version)
 
 	// make http POST request to check for leaked tokens.
 	resp, err := wClient.httpClient.Do(req)
