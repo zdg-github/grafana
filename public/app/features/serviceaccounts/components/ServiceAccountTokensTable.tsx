@@ -39,7 +39,7 @@ export const ServiceAccountTokensTable = ({ tokens, timeZone, tokenActionsDisabl
               <td>{formatDate(timeZone, key.created)}</td>
               <td>{formatLastUsedAtDate(timeZone, key.lastUsedAt)}</td>
               <td className="width-1 text-center">
-                {key.isRevoked && <span className="label label-tag label-tag--gray">Disabled</span>}
+                {key.isRevoked && <span className="label label-tag label-tag--gray">Revoked</span>}
               </td>
               <td>
                 <DeleteButton
