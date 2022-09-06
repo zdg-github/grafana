@@ -67,4 +67,5 @@ export interface FeatureToggles {
   traceqlEditor?: boolean;
   redshiftAsyncQueryDataSupport?: boolean;
   athenaAsyncQueryDataSupport?: boolean;
+  datasourceLogger?: boolean;
 }

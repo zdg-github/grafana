@@ -285,5 +285,9 @@ var (
 			State:        FeatureStateAlpha,
 			FrontendOnly: true,
 		},
+		{
+			Name:        "datasourceLogger",
+			Description: "Logs all datasource requests",
+		},
 	}
 )
