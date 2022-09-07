@@ -103,8 +103,14 @@ func Test_PluginsInstallAndUninstall(t *testing.T) {
 }
 
 func Test_PluginsInstallAndUninstall_AccessControl(t *testing.T) {
-	canInstall := []ac.Permission{{Action: plugins.ActionInstall}}
-	cannotInstall := []ac.Permission{{Action: "plugins:cannotinstall"}}
+	canInstall := []ac.Permission{
+		{Action: plugins.ActionInstall},
+		{Action: plugins.ActionRead, Scope: plugins.ScopeProvider.GetResourceScope("test")},
+	}
+	cannotInstall := []ac.Permission{
+		{Action: plugins.ActionInstall},
+		{Action: plugins.ActionRead, Scope: plugins.ScopeProvider.GetResourceScope("not-test")},
+	}
 
 	type testCase struct {
 		expectedCode                     int
@@ -447,7 +453,7 @@ func Test_PluginsList_AccessControl(t *testing.T) {
 		filters         map[string]string
 	}
 	tcs := []testCase{
-		{expectedCode: http.StatusOK, role: org.RoleViewer, expectedPlugins: []string{"mysql"}},
+		{expectedCode: http.StatusOK, role: org.RoleViewer, expectedPlugins: []string{"mysql", "test-app"}}, // Anyone can list non-core plugins
 		{expectedCode: http.StatusOK, role: org.RoleViewer, isGrafanaAdmin: true, expectedPlugins: []string{"mysql", "test-app"}},
 		{expectedCode: http.StatusOK, role: org.RoleAdmin, expectedPlugins: []string{"mysql", "test-app"}},
 	}
@@ -473,7 +479,7 @@ func Test_PluginsList_AccessControl(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		sc := setupHTTPServer(t, true)
+		sc := setupHTTPServer(t, false)
 		sc.hs.PluginSettings = &pluginSettings
 		sc.hs.pluginStore = pluginStore
 		sc.hs.pluginsUpdateChecker = updatechecker.ProvidePluginsService(sc.hs.Cfg, pluginStore)
