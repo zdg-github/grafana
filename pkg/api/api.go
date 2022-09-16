@@ -257,6 +257,7 @@ func (hs *HTTPServer) registerRoutes() {
 
 		if hs.Features.IsEnabled(featuremgmt.FlagStorage) {
 			apiRoute.Group("/storage", hs.StorageService.RegisterHTTPRoutes)
+			apiRoute.Group("/webdav", hs.StorageService.RegisterWebdavRoutes)
 		}
 
 		// current org

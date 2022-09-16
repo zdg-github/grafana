@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/sqlstore/db"
 	"github.com/grafana/grafana/pkg/services/user"
 	"github.com/grafana/grafana/pkg/setting"
+	"golang.org/x/net/webdav"
 )
 
 var grafanaStorageLogger = log.New("grafanaStorageLogger")
@@ -64,6 +65,9 @@ type StorageService interface {
 	// Register the HTTP
 	RegisterHTTPRoutes(routing.RouteRegister)
 
+	// Webdav
+	RegisterWebdavRoutes(routing.RouteRegister)
+
 	// List folder contents
 	List(ctx context.Context, user *user.SignedInUser, path string) (*StorageListFrame, error)
 
@@ -85,11 +89,12 @@ type StorageService interface {
 }
 
 type standardStorageService struct {
-	sql          db.DB
-	tree         *nestedTree
-	cfg          *GlobalStorageConfig
-	authService  storageAuthService
-	quotaService quota.Service
+	sql           db.DB
+	tree          *nestedTree
+	cfg           *GlobalStorageConfig
+	authService   storageAuthService
+	quotaService  quota.Service
+	webdavHandler *webdav.Handler
 }
 
 func ProvideService(
