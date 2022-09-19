@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/grafana/pkg/plugins/manager/loader/finder"
 	"github.com/grafana/grafana/pkg/plugins/manager/loader/initializer"
 	"github.com/grafana/grafana/pkg/plugins/manager/signature"
+	ac "github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/org"
 	"github.com/grafana/grafana/pkg/util"
 )
@@ -39,23 +40,25 @@ type Loader struct {
 	pluginInitializer  initializer.Initializer
 	signatureValidator signature.Validator
 	log                log.Logger
+	acService          ac.Service
 
 	errs map[string]*plugins.SignatureError
 }
 
 func ProvideService(cfg *config.Cfg, license models.Licensing, authorizer plugins.PluginLoaderAuthorizer,
-	backendProvider plugins.BackendFactoryProvider) (*Loader, error) {
-	return New(cfg, license, authorizer, backendProvider), nil
+	backendProvider plugins.BackendFactoryProvider, acService ac.Service) (*Loader, error) {
+	return New(cfg, license, authorizer, backendProvider, acService), nil
 }
 
 func New(cfg *config.Cfg, license models.Licensing, authorizer plugins.PluginLoaderAuthorizer,
-	backendProvider plugins.BackendFactoryProvider) *Loader {
+	backendProvider plugins.BackendFactoryProvider, acService ac.Service) *Loader {
 	return &Loader{
 		pluginFinder:       finder.New(),
 		pluginInitializer:  initializer.New(cfg, backendProvider, license),
 		signatureValidator: signature.NewValidator(authorizer),
 		errs:               make(map[string]*plugins.SignatureError),
 		log:                log.New("plugin.loader"),
+		acService:          acService,
 	}
 }
 
@@ -177,6 +180,16 @@ func (l *Loader) loadPlugins(ctx context.Context, class plugins.Class, pluginJSO
 			return nil, err
 		}
 		metrics.SetPluginBuildInformation(p.ID, string(p.Type), p.Info.Version, string(p.Signature))
+
+		if len(p.JSONData.Roles) > 0 {
+			if errDeclareRoles := l.acService.DeclarePluginRoles(p.ID, p.JSONData.Roles...); errDeclareRoles != nil {
+				l.log.Warn("Declare plugin roles failed",
+					"pluginID", p.ID,
+					"warning", "Make sure the role declaration is correct.",
+					"path", p.PluginDir+"/plugin.json",
+					"error", errDeclareRoles)
+			}
+		}
 	}
 
 	return verifiedPlugins, nil
