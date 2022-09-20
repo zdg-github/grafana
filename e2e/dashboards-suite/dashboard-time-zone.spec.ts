@@ -62,6 +62,19 @@ e2e.scenario({
 
     // click to go back to the dashboard.
     e2e.components.BackButton.backArrow().click({ force: true }).wait(5000);
+    cy.intercept(
+      {
+        url: '**/api/ds/query',
+        method: 'POST',
+      },
+      (req) => {
+        req.on('response', (res) => {
+          // Throttle the response to 1 Mbps to simulate a
+          // mobile 3G connection
+          res.setDelay(10000);
+        });
+      }
+    ).as('refreshDSQuery');
     e2e.components.RefreshPicker.runButtonV2().click();
 
     for (const title of panelsToCheck) {
