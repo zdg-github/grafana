@@ -60,14 +60,19 @@ func TestNewAlertmanagerNotifier(t *testing.T) {
 
 			secretsService := secretsManager.SetupTestService(t, fakes.NewFakeSecretsStore())
 			decryptFn := secretsService.GetDecryptedValue
-			cfg, err := NewAlertmanagerConfig(m, decryptFn)
-			if c.expectedInitError != "" {
-				require.Equal(t, c.expectedInitError, err.Error())
-				return
+
+			fc := FactoryConfig{
+				Config:      m,
+				DecryptFunc: decryptFn,
+				ImageStore:  &UnavailableImageStore{},
+				Template:    tmpl,
 			}
-			require.NoError(t, err)
-			sn := NewAlertmanagerNotifier(cfg, &UnavailableImageStore{}, tmpl, decryptFn)
-			require.NotNil(t, sn)
+			sn, err := buildAlertmanagerNotifier(fc)
+			if c.expectedInitError != "" {
+				require.ErrorContains(t, err, c.expectedInitError)
+			} else {
+				require.NotNil(t, sn)
+			}
 		})
 	}
 }
@@ -157,9 +162,15 @@ func TestAlertmanagerNotifier_Notify(t *testing.T) {
 
 			secretsService := secretsManager.SetupTestService(t, fakes.NewFakeSecretsStore())
 			decryptFn := secretsService.GetDecryptedValue
-			cfg, err := NewAlertmanagerConfig(m, decryptFn)
+			fc := FactoryConfig{
+				Config:      m,
+				DecryptFunc: decryptFn,
+				ImageStore:  images,
+				Template:    tmpl,
+			}
+			sn, err := buildAlertmanagerNotifier(fc)
 			require.NoError(t, err)
-			sn := NewAlertmanagerNotifier(cfg, images, tmpl, decryptFn)
+
 			var body []byte
 			origSendHTTPRequest := sendHTTPRequest
 			t.Cleanup(func() {
