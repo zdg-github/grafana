@@ -21,13 +21,6 @@ import (
 // the given key. If the key is not present, then it returns the fallback value.
 type GetDecryptedValueFn func(ctx context.Context, sjd map[string][]byte, key string, fallback string) string
 
-type AlertmanagerConfig struct {
-	*NotificationChannelConfig
-	URLs              []*url.URL
-	BasicAuthUser     string
-	BasicAuthPassword string
-}
-
 type alertmanagerSettings struct {
 	Url      string `json:"url,omitempty" yaml:"url,omitempty"`
 	User     string `json:"basicAuthUser,omitempty" yaml:"basicAuthUser,omitempty"`
