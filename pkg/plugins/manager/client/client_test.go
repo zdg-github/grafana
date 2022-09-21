@@ -86,6 +86,7 @@ func TestQueryData(t *testing.T) {
 				if tc.expectedResp != nil {
 					require.NoError(t, err)
 					require.NotNil(t, resp)
+					require.Equal(t, tc.expectedResp, resp)
 				}
 			})
 		}

@@ -46,7 +46,13 @@ func (s *Service) QueryData(ctx context.Context, req *backend.QueryDataRequest) 
 			return nil, plugins.ErrPluginUnavailable.Errorf("%w", backendplugin.ErrPluginUnavailable)
 		}
 
-		return nil, plugins.ErrPluginDownstreamError.Errorf("%v: %w", "failed to query data", err)
+		resp = backend.NewQueryDataResponse()
+		for _, q := range req.Queries {
+			resp.Responses[q.RefID] = backend.DataResponse{
+				Error: err,
+			}
+		}
+		return resp, nil
 	}
 
 	for refID, res := range resp.Responses {
