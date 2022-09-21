@@ -26,6 +26,7 @@ func TestQueryData(t *testing.T) {
 		tcs := []struct {
 			err           error
 			expectedError error
+			expectedResp  *backend.QueryDataResponse
 		}{
 			{
 				err:           backendplugin.ErrPluginUnavailable,
@@ -36,8 +37,17 @@ func TestQueryData(t *testing.T) {
 				expectedError: plugins.ErrMethodNotImplemented,
 			},
 			{
-				err:           errors.New("surprise surprise"),
-				expectedError: plugins.ErrPluginDownstreamError,
+				err: errors.New("surprise surprise"),
+				expectedResp: &backend.QueryDataResponse{
+					Responses: backend.Responses{
+						"A": backend.DataResponse{
+							Error: errors.New("surprise surprise"),
+						},
+						"B": backend.DataResponse{
+							Error: errors.New("surprise surprise"),
+						},
+					},
+				},
 			},
 		}
 
@@ -58,13 +68,25 @@ func TestQueryData(t *testing.T) {
 				require.NoError(t, err)
 
 				client := ProvideService(registry)
-				_, err = client.QueryData(context.Background(), &backend.QueryDataRequest{
+				resp, err := client.QueryData(context.Background(), &backend.QueryDataRequest{
 					PluginContext: backend.PluginContext{
 						PluginID: "grafana",
 					},
+					Queries: []backend.DataQuery{
+						{RefID: "A"},
+						{RefID: "B"},
+					},
 				})
-				require.Error(t, err)
-				require.ErrorIs(t, err, tc.expectedError)
+
+				if tc.expectedError != nil {
+					require.Error(t, err)
+					require.ErrorIs(t, err, tc.expectedError)
+				}
+
+				if tc.expectedResp != nil {
+					require.NoError(t, err)
+					require.NotNil(t, resp)
+				}
 			})
 		}
 	})
