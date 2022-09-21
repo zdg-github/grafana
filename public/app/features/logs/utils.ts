@@ -45,15 +45,6 @@ export function getLogLevel(line: string): LogLevel {
   return level;
 }
 
-export function getLogLevelFromKey(key: string | number): LogLevel {
-  const level = (LogLevel as any)[key.toString().toLowerCase()];
-  if (level) {
-    return level;
-  }
-
-  return LogLevel.unknown;
-}
-
 export function addLogLevelToSeries(series: DataFrame, lineIndex: number): DataFrame {
   const levels = new ArrayVector<LogLevel>();
   const lines = series.fields[lineIndex];
