@@ -41,13 +41,9 @@ func (hs *HTTPServer) ListGnetPlugins(c *models.ReqContext) {
 			return nil
 		}
 
-		b, errRead := ioutil.ReadAll(r.Body)
-		if errRead != nil {
-			return errRead
-		}
-		errClose := r.Body.Close()
-		if errClose != nil {
-			return errClose
+		b, errReadBody := hs.readBody(r)
+		if errReadBody != nil {
+			return errReadBody
 		}
 
 		rewriteResponse := func(b []byte) {
@@ -57,56 +53,16 @@ func (hs *HTTPServer) ListGnetPlugins(c *models.ReqContext) {
 			r.Header.Set("Content-Length", strconv.Itoa(len(b)))
 		}
 
-		pluginList := map[string]interface{}{}
-		if r.Header.Get("Content-Encoding") == "gzip" {
-			r.Header.Del("Content-Length")
-			zr, errUnzip := gzip.NewReader(bytes.NewReader(b))
-			if errUnzip != nil {
-				return errUnzip
-			}
-			if errDecode := json.NewDecoder(zr).Decode(&pluginList); errDecode != nil {
-				return errDecode
-			}
-		} else {
-			if errUnmarshal := json.Unmarshal(b, &pluginList); errUnmarshal != nil {
-				return errUnmarshal
-			}
+		pluginList, errPluginList := hs.parsePluginList(r, b)
+		if errPluginList != nil {
+			return errPluginList
 		}
 
-		items, ok := pluginList["items"].([]interface{})
+		ok := hs.addMetadataToGNETPluginList(pluginList, c)
 		if !ok {
 			rewriteResponse(b)
 		}
 
-		ids := map[string]bool{}
-		for i := range items {
-			item, ok := items[i].(map[string]interface{})
-			if !ok {
-				continue
-			}
-			if slug, ok := item["slug"]; ok {
-				pluginID := slug.(string)
-				ids[pluginID] = true
-			}
-		}
-
-		metadata := ac.GetResourcesMetadata(c.Req.Context(),
-			c.SignedInUser.Permissions[c.OrgID],
-			plugins.ScopeProvider.GetResourceScope(""),
-			ids)
-		for i := range items {
-			item, ok := items[i].(map[string]interface{})
-			if !ok {
-				continue
-			}
-			if slug, ok := item["slug"]; ok {
-				pluginID := slug.(string)
-				item["accessControl"] = metadata[pluginID]
-			}
-			items[i] = item
-		}
-
-		pluginList["items"] = items
 		newBody, errMarshal := json.Marshal(pluginList)
 		if errMarshal != nil {
 			rewriteResponse(b)
@@ -120,6 +76,75 @@ func (hs *HTTPServer) ListGnetPlugins(c *models.ReqContext) {
 		return nil
 	}
 	proxy.ServeHTTP(c.Resp, c.Req)
+}
+
+func (*HTTPServer) addMetadataToGNETPluginList(pluginList map[string]interface{}, c *models.ReqContext) bool {
+	items, ok := pluginList["items"].([]interface{})
+	if !ok {
+		return false
+	}
+
+	ids := map[string]bool{}
+	for i := range items {
+		item, ok := items[i].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if slug, ok := item["slug"]; ok {
+			pluginID := slug.(string)
+			ids[pluginID] = true
+		}
+	}
+
+	metadata := ac.GetResourcesMetadata(c.Req.Context(),
+		c.SignedInUser.Permissions[c.OrgID],
+		plugins.ScopeProvider.GetResourceScope(""),
+		ids)
+	for i := range items {
+		item, ok := items[i].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if slug, ok := item["slug"]; ok {
+			pluginID := slug.(string)
+			item["accessControl"] = metadata[pluginID]
+		}
+		items[i] = item
+	}
+
+	pluginList["items"] = items
+	return true
+}
+
+func (*HTTPServer) parsePluginList(r *http.Response, b []byte) (map[string]interface{}, error) {
+	pluginList := map[string]interface{}{}
+	if r.Header.Get("Content-Encoding") == "gzip" {
+		r.Header.Del("Content-Length")
+		zr, errUnzip := gzip.NewReader(bytes.NewReader(b))
+		if errUnzip != nil {
+			return nil, errUnzip
+		}
+		if errDecode := json.NewDecoder(zr).Decode(&pluginList); errDecode != nil {
+			return nil, errDecode
+		}
+	} else {
+		if errUnmarshal := json.Unmarshal(b, &pluginList); errUnmarshal != nil {
+			return nil, errUnmarshal
+		}
+	}
+	return pluginList, nil
+}
+
+func (*HTTPServer) readBody(r *http.Response) ([]byte, error) {
+	b, errRead := ioutil.ReadAll(r.Body)
+	if errRead != nil {
+		return nil, errRead
+	}
+	errClose := r.Body.Close()
+	if errClose != nil {
+		return nil, errClose
+	}
+	return b, nil
 }
 
 func ReverseProxyGnetReq(logger log.Logger, proxyPath string, version string) *httputil.ReverseProxy {
