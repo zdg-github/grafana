@@ -362,7 +362,8 @@ steps:
   image: grafana/build-container:1.6.2
   name: yarn-install
 - commands:
-  - git clone "https://github.com/grafana/grafana-enterprise.git" --depth=1
+  - git clone "https://$${GITHUB_TOKEN}@github.com/grafana/grafana-enterprise.git"
+    --depth=1
   - cd grafana-enterprise
   - git fetch origin "refs/tags/*:refs/tags/*"
   - git tag -d $${TEST_TAG} && git push --delete origin $${TEST_TAG} && git tag $${TEST_TAG}
@@ -376,7 +377,7 @@ steps:
     DOWNSTREAM_REPO:
       from_secret: downstream
     GITHUB_TOKEN:
-      from_secret: github_token
+      from_secret: github_token_pr
     TEST_TAG: v0.0.0-test
   failure: ignore
   image: grafana/build-container:1.6.2
@@ -1222,7 +1223,8 @@ steps:
   image: grafana/build-container:1.6.2
   name: yarn-install
 - commands:
-  - git clone "https://github.com/grafana/grafana-enterprise.git" --depth=1
+  - git clone "https://$${GITHUB_TOKEN}@github.com/grafana/grafana-enterprise.git"
+    --depth=1
   - cd grafana-enterprise
   - git fetch origin "refs/tags/*:refs/tags/*"
   - git tag -d $${TEST_TAG} && git push --delete origin $${TEST_TAG} && git tag $${TEST_TAG}
@@ -1236,7 +1238,7 @@ steps:
     DOWNSTREAM_REPO:
       from_secret: downstream
     GITHUB_TOKEN:
-      from_secret: github_token
+      from_secret: github_token_pr
     TEST_TAG: v0.0.0-test
   failure: ignore
   image: grafana/build-container:1.6.2
@@ -5351,6 +5353,6 @@ kind: secret
 name: packages_secret_access_key
 ---
 kind: signature
-hmac: fce1e76325927ca4cc420612a75b7747e03b4a575d67d7373adcf2dd2227a303
+hmac: 5b4e75b31a9aae6d99a76f2ff7f93bfef23b6a085bf3b99c0136efeb37c65e22
 
 ...
