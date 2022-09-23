@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	glog "github.com/grafana/grafana/pkg/infra/log"
+	sqllog "github.com/grafana/grafana/pkg/services/sqlstore/log"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -16,25 +18,50 @@ type Session interface {
 
 type SessionDB struct {
 	sqlxdb *sqlx.DB
+	logger sqllog.ILogger
 }
 
-func GetSession(sqlxdb *sqlx.DB) *SessionDB {
-	return &SessionDB{sqlxdb: sqlxdb}
+func GetSession(sqlxdb *sqlx.DB, debugSQL bool) *SessionDB {
+	db := SessionDB{sqlxdb: sqlxdb}
+	if !debugSQL {
+		db.logger = sqllog.DiscardLogger{}
+	} else {
+		db.logger = sqllog.NewGenericLogger(glog.LvlInfo, glog.WithSuffix(glog.New("sqlstore.sqlx"), glog.CallerContextKey, glog.StackCaller(glog.DefaultCallerDepth)))
+
+	}
+	return &db
 }
+
+/*
+type DBFunc func(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+
+func (gs *SessionDB) withLogging(callback DBFunc, ctx context.Context, dest interface{}, query string, args ...interface{}) error {
+	gs.logger.Infof("[SQL] %v %v", query, args)
+	err := callback(ctx, dest, query, args...)
+	if err != nil {
+		gs.logger.Error(err)
+	}
+	return err
+}
+*/
 
 func (gs *SessionDB) Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
+	gs.logger.Infof("[SQL] %v %v", query, args)
 	return gs.sqlxdb.GetContext(ctx, dest, gs.sqlxdb.Rebind(query), args...)
 }
 
 func (gs *SessionDB) Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
+	gs.logger.Infof("[SQL] %v %v", query, args)
 	return gs.sqlxdb.SelectContext(ctx, dest, gs.sqlxdb.Rebind(query), args...)
 }
 
 func (gs *SessionDB) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	gs.logger.Infof("[SQL] %v %v", query, args)
 	return gs.sqlxdb.ExecContext(ctx, gs.sqlxdb.Rebind(query), args...)
 }
 
 func (gs *SessionDB) NamedExec(ctx context.Context, query string, arg interface{}) (sql.Result, error) {
+	gs.logger.Infof("[SQL] %v %v", query, arg)
 	return gs.sqlxdb.NamedExecContext(ctx, gs.sqlxdb.Rebind(query), arg)
 }
 
@@ -44,7 +71,7 @@ func (gs *SessionDB) driverName() string {
 
 func (gs *SessionDB) Beginx() (*SessionTx, error) {
 	tx, err := gs.sqlxdb.Beginx()
-	return &SessionTx{sqlxtx: tx}, err
+	return &SessionTx{sqlxtx: tx, logger: gs.logger}, err
 }
 
 func (gs *SessionDB) WithTransaction(ctx context.Context, callback func(*SessionTx) error) error {
@@ -65,22 +92,27 @@ func (gs *SessionDB) WithTransaction(ctx context.Context, callback func(*Session
 }
 
 func (gs *SessionDB) ExecWithReturningId(ctx context.Context, query string, args ...interface{}) (int64, error) {
+	gs.logger.Infof("[SQL] %v %v", query, args)
 	return execWithReturningId(ctx, gs.driverName(), query, gs, args...)
 }
 
 type SessionTx struct {
 	sqlxtx *sqlx.Tx
+	logger sqllog.ILogger
 }
 
 func (gtx *SessionTx) NamedExec(ctx context.Context, query string, arg interface{}) (sql.Result, error) {
+	gtx.logger.Infof("[SQL] %v %v", query, arg)
 	return gtx.sqlxtx.NamedExecContext(ctx, gtx.sqlxtx.Rebind(query), arg)
 }
 
 func (gtx *SessionTx) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	gtx.logger.Infof("[SQL] %v %v", query, args)
 	return gtx.sqlxtx.ExecContext(ctx, gtx.sqlxtx.Rebind(query), args...)
 }
 
 func (gtx *SessionTx) Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
+	gtx.logger.Infof("[SQL] %v %v", query, args)
 	return gtx.sqlxtx.GetContext(ctx, dest, gtx.sqlxtx.Rebind(query), args...)
 }
 
@@ -89,6 +121,7 @@ func (gtx *SessionTx) driverName() string {
 }
 
 func (gtx *SessionTx) ExecWithReturningId(ctx context.Context, query string, args ...interface{}) (int64, error) {
+	gtx.logger.Infof("[SQL] %v %v", query, args)
 	return execWithReturningId(ctx, gtx.driverName(), query, gtx, args...)
 }
 
